@@ -75,6 +75,7 @@ class IP2Location(object):
         self._index = None
         self._rec_cache = {}
         self._rec_hits = 0
+        self._ip_cache = {}
 
     def get_country_short(self, ip):
         ''' Get country_short '''
@@ -158,7 +159,11 @@ class IP2Location(object):
         return rec and rec.usage_type
     def get_all(self, ip):
         ''' Get all '''
-        return self._get_record(ip)
+        if ip in self._ip_cache:
+            return self._ip_cache[ip]
+        r = self._get_record(ip)
+        self._ip_cache[ip] = r
+        return r
 
     def find(self, ip):
         ''' Find IP record '''
