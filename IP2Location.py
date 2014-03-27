@@ -294,10 +294,12 @@ class IP2Location(object):
             ipno = (a << 64) | b
             off = 12
 
+        sz = self._dbcolumn
+        idx = self._index
         while low <= high:
             mid = int((low + high) / 2)
-            ipfrom = self._index[mid * self._dbcolumn]
-            ipto = self._index[(mid + 1) * self._dbcolumn]
+            ipfrom = idx[mid * sz]
+            ipto = idx[(mid + 1) * sz]
 
             if ipfrom <= ipno < ipto:
                 return self._read_record(mid)
