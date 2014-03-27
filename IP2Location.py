@@ -73,6 +73,8 @@ class IP2Location(object):
         self._dbaddr = struct.unpack('<I', self._f.read(4))[0]
         self._ipversion = struct.unpack('<I', self._f.read(4))[0]
         self._index = None
+        self._rec_cache = {}
+        self._rec_hits = 0
 
     def get_country_short(self, ip):
         ''' Get country_short '''
@@ -189,6 +191,9 @@ class IP2Location(object):
             return str(self._readip(offset))
 
     def _read_record(self, mid):
+        if mid in self._rec_cache:
+            self._rec_hits += 1
+            return self._rec_cache[mid]
         baseaddr = self._dbaddr
         rec = IP2LocationRecord()
         rec.ip = self._readips(baseaddr + (mid) * self._dbcolumn * 4)
@@ -256,6 +261,7 @@ class IP2Location(object):
         if _USAGETYPE_POSITION[self._dbtype] != 0:
             rec.usage_type = self._reads(self._readi(calc_off(_USAGETYPE_POSITION, mid)) + 1)
 
+        self._rec_cache[mid] = rec
         return rec
 
     def __iter__(self):
