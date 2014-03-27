@@ -1,5 +1,6 @@
 import struct
 import socket
+import array
 
 class IP2LocationRecord:
     ''' IP2Location record with all fields from the database '''
@@ -71,6 +72,7 @@ class IP2Location(object):
         self._dbcount = struct.unpack('<I', self._f.read(4))[0]
         self._dbaddr = struct.unpack('<I', self._f.read(4))[0]
         self._ipversion = struct.unpack('<I', self._f.read(4))[0]
+        self._index = None
 
     def get_country_short(self, ip):
         ''' Get country_short '''
@@ -264,7 +266,42 @@ class IP2Location(object):
             yield self._read_record(low)
             low += 1
   
+    def load_index(self):
+        assert self._ipversion == _IPV4
+        self._index = array.array('I')
+        self._f.seek(self._dbaddr - 1)
+        self._index.fromfile(self._f, self._dbcount * self._dbcolumn)
+        return
+
     def _get_record(self, ip):
+        if self._index is None:
+            return self._get_record_slow(ip)
+
+        low = 0
+        high = self._dbcount - 2
+
+        if self._ipversion == _IPV4:
+            ipno = struct.unpack('!L', socket.inet_aton(ip))[0]
+            off = 0
+        elif self._ipversion == _IPV6:
+            a, b = struct.unpack('!QQ', socket.inet_pton(socket.AF_INET6, ip))
+            ipno = (a << 64) | b
+            off = 12
+
+        while low <= high:
+            mid = int((low + high) / 2)
+            ipfrom = self._index[mid * self._dbcolumn]
+            ipto = self._index[(mid + 1) * self._dbcolumn]
+
+            if ipfrom <= ipno < ipto:
+                return self._read_record(mid)
+            else:
+                if ipno < ipfrom:
+                    high = mid - 1
+                else:
+                    low = mid + 1
+
+    def _get_record_slow(self, ip):
         baseaddr = self._dbaddr
         low = 0
         high = self._dbcount
